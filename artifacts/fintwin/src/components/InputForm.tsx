@@ -44,13 +44,13 @@ export function InputForm({ data, updateField }: InputFormProps) {
   );
 
   return (
-    <div className="glass-panel rounded-2xl p-6 h-full flex flex-col">
+    <div className="glass-panel rounded-2xl p-6">
       <div className="mb-8">
         <h2 className="text-2xl font-display font-bold text-white mb-2">Parameters</h2>
         <p className="text-slate-400 text-sm">Tune your digital twin's reality engine.</p>
       </div>
 
-      <div className="space-y-6 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+      <div className="space-y-6">
         <div className="space-y-6 pb-6 border-b border-white/5">
           <h3 className="text-xs uppercase tracking-wider text-emerald-500 font-bold">Income & Savings</h3>
           <InputRow label="Monthly Income" value={data.monthlyIncome} field="monthlyIncome" icon={DollarSign} prefix="$" />

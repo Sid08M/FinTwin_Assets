@@ -1,0 +1,28 @@
+Role: Expert UI/UX Engineer & React Architect.
+Goal: Upgrade the existing FinTwin dashboard with 5 premium "Behavioral UX" features while fixing a critical viewport overflow bug.
+
+CRITICAL DIRECTIVES: > * Do NOT alter the existing localStorage saving mechanism or the core compounding math in /api/simulate.
+
+Manage the z-index carefully so the floating AI chat remains clickable above all new dynamic backgrounds.
+
+Step 1: The Layout Fix (Crucial)
+Locate the main wrapper div of the Dashboard.
+
+Remove h-screen and replace it with min-h-screen.
+
+Add overflow-y-auto to enable smooth scrolling.
+
+Add generous bottom padding (e.g., pb-32) so the new widgets we are adding don't get cut off at the bottom of the monitor.
+
+Step 2: Implement the 5 Behavioral UX Features
+Please build these as modular, separate React components to keep the code clean, then integrate them into the scrolling Dashboard:
+
+"Financial Weather" Background: Change the main Tailwind background gradients based on the user's Savings Rate. Bad (< 10%): Dark/stormy gradients. Good (> 20%): Bright/clear gradients. Ensure text remains readable.
+
+50/30/20 Speedometer Gauge: Build a visual gauge showing their budget split: Needs (50%), Wants (30%), Savings (20%). If "Wants" or "Needs" exceed the target, make that segment pulse red/orange to indicate danger. Place this below the main inputs.
+
+"Twin Timelines" Ghost Chart: Upgrade the existing Recharts line graph to show TWO lines: The "Current Trajectory" (faded line) and the "Optimized Twin" (glowing green line, simulating if they saved 10% more each month).
+
+AI "Roast or Toast" Toggle: Add a beautiful UI toggle switch above the chat window: "Professional" vs. "Financial Guru (Roast Me)". Update the prompt sent to the Gemini API so that if "Roast" is active, Gemini is highly sarcastic and aggressively critiques their bad spending habits.
+
+Gamified Leak Detectors: Scan their expenses. If their "Wants" ratio is too high, render a highly visible, red "Warning Card" at the bottom of the dashboard that says: "Warning: High expense ratio detected. Plugging a $X leak here adds $Y to your 10-year Net Worth."

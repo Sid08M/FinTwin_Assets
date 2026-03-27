@@ -13,7 +13,7 @@ export function LeakWarnings({ data }: LeakWarningsProps) {
   
   if (expenseRatio <= 0.8) {
     return (
-      <div className="glass-panel rounded-2xl p-6 h-full flex flex-col items-center justify-center text-center opacity-50">
+      <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center text-center opacity-50 min-h-[140px]">
         <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
           <TrendingDown className="w-6 h-6 text-emerald-400" />
         </div>
@@ -32,17 +32,17 @@ export function LeakWarnings({ data }: LeakWarningsProps) {
   const impact10Year = leakAmount * ((Math.pow(1 + r/n, n*t) - 1) / (r/n));
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ scale: 0.95, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="rounded-2xl p-[1px] bg-gradient-to-br from-destructive to-orange-500 h-full relative overflow-hidden group"
+      className="rounded-2xl p-[1px] bg-gradient-to-br from-destructive to-orange-500 relative overflow-hidden group"
     >
-      <motion.div 
+      <motion.div
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 2, repeat: Infinity }}
         className="absolute inset-0 bg-destructive/20"
       />
-      <div className="bg-slate-950/90 h-full w-full rounded-2xl p-6 relative z-10 flex flex-col">
+      <div className="bg-slate-950/90 w-full rounded-2xl p-6 relative z-10 flex flex-col">
         <div className="flex items-start gap-4 mb-4">
           <div className="p-3 rounded-xl bg-destructive/20 text-destructive">
             <AlertTriangle className="w-6 h-6" />

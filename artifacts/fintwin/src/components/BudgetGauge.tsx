@@ -24,7 +24,7 @@ export function BudgetGauge({ data }: BudgetGaugeProps) {
   const hasWarning = chartData.some(d => d.exceeds);
 
   return (
-    <div className="glass-panel rounded-2xl p-6 h-full flex flex-col relative overflow-hidden">
+    <div className="glass-panel rounded-2xl p-6 flex flex-col relative overflow-hidden">
       {hasWarning && (
         <motion.div 
           animate={{ opacity: [0.1, 0.3, 0.1] }}
