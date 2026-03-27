@@ -1,0 +1,80 @@
+Role: Expert Full-Stack Developer.
+Goal: Build "FinTwin," a Personal Financial Digital Twin simulator.
+
+Tech Stack:
+
+Frontend: React, Tailwind CSS, Recharts (for graphs), and Lucide React (for icons).
+
+Backend: Node.js (Express) to handle simulation math and AI calls.
+
+AI: Gemini API (use @google/genai).
+
+Storage: NO MONGODB. Use browser window.localStorage to persist all user financial data and scenario history.
+
+Key Features to Build:
+
+Data Persistence: Implement a "Save/Load" system using localStorage so the user's digital twin remains even after a browser refresh.
+
+Financial Dashboard: Create a high-end UI with metric cards for Monthly Cash Flow, Savings Rate, and projected Net Worth.
+
+The Simulator Engine: Build a backend endpoint /api/simulate that uses the Future Value of an Ordinary Annuity formula (accounting for monthly contributions and compounding interest).
+
+Visualizations: A line chart showing the 10-year growth of the user's "Twin."
+
+AI Advisor: A floating chat window that sends the user's current financial stats + their question to Gemini to get personalized advice.
+
+Execution Steps:
+
+Step 1: Scaffold the React frontend and Express backend folders.
+
+Step 2: Build the input form and the calculation engine first.
+
+Step 3: Implement the Recharts dashboard.
+
+Step 4: Add the AI Advisor integration.
+
+IMPORTANT: Once the environment is set up, I will provide my GEMINI_API_KEY via the Replit Secrets (Environment Variables) tool.
+
+
+
+
+
+
+
+
+
+
+Role: Expert UI/UX Engineer & React Architect.
+Goal: Upgrade the existing FinTwin dashboard with 5 premium, gamified "Behavioral UX" features.
+
+CRITICAL DIRECTIVE: Do NOT alter the existing localStorage saving mechanism or the core compounding math in /api/simulate. Your job is strictly visual and functional enhancement of the frontend. Create these as separate React components to avoid breaking the main dashboard file.
+
+Features to Implement:
+
+"Financial Weather" Background (WeatherWrapper.jsx): > * Create a wrapper component that changes the Tailwind background gradients based on the user's Savings Rate.
+
+Bad (< 10%): Dark, stormy gradients. Good (> 20%): Bright, clear, vibrant UI themes. Ensure text remains readable via proper contrast and z-index.
+
+50/30/20 Speedometer Gauge (BudgetGauge.jsx): > * Build a visual gauge (using Recharts pie chart or custom SVG/Tailwind) showing their budget split: Needs (50%), Wants (30%), Savings (20%).
+
+If "Wants" or "Needs" exceed the target, make that segment pulse red/orange to indicate danger.
+
+"Twin Timelines" Ghost Chart (ScenarioChart.jsx update): > * Upgrade the existing Recharts line graph.
+
+Show TWO lines: The "Current Trajectory" (faded, maybe red/orange) and the "Optimized Twin" (glowing green line, simulating if they saved 10% more each month).
+
+AI "Roast or Toast" Toggle (AiAdvisor.jsx update): > * Add a beautiful UI toggle switch above the chat window: "Professional" vs. "Financial Guru (Roast Me)".
+
+Update the prompt sent to the Gemini API: If "Roast" is active, instruct Gemini to be highly sarcastic and aggressively critique their "Money Leaks" and bad spending habits.
+
+Gamified Leak Detectors (LeakWarnings.jsx): > * Scan their expenses against their income. If their expenses exceed a healthy threshold, render a highly visible, red "Warning Card" that says: "Warning: High expense ratio detected. Plugging a 5% leak here adds X amount to your 10-year Net Worth."
+
+Execution Steps:
+
+Step 1: Isolate and build the new UI components (WeatherWrapper, BudgetGauge, LeakWarnings).
+
+Step 2: Upgrade the Recharts graph to show the dual "Twin" timelines.
+
+Step 3: Implement the AI Roast toggle and update the backend Gemini prompt logic.
+
+Step 4: Integrate all new components beautifully into the main Dashboard view.

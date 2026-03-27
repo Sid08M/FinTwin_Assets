@@ -1,0 +1,19 @@
+packages:
+  "recharts": "For the Twin Timelines and Budget Gauge charts"
+  "framer-motion": "For premium WeatherWrapper animations, floating chat, and pulsing leak warnings"
+  "lucide-react": "For beautiful consistent iconography across the dashboard"
+  "clsx": "For conditional class name merging in UI components"
+  "tailwind-merge": "For safely merging tailwind classes in UI components"
+  "usehooks-ts": "For useDebounce and useLocalStorage hooks"
+
+images:
+  - path: "artifacts/fintwin/public/images/avatar-professional.png"
+    description: "A sleek, minimal 3D rendered avatar of a professional financial advisor robot, glowing cyan accents, dark background, premium lighting"
+    aspect_ratio: "1:1"
+  - path: "artifacts/fintwin/public/images/avatar-roast.png"
+    description: "A sleek, minimal 3D rendered avatar of an angry, sarcastic robot with glowing red devil eyes, dark background, premium cinematic lighting"
+    aspect_ratio: "1:1"
+
+notes:
+  - Uses the @workspace/api-client-react hooks for TanStack query integration.
+  - The AI Advisor uses a simulated streaming typing effect on the frontend for the /api/ai/advise endpoint JSON response to meet the streaming UX requirement gracefully.

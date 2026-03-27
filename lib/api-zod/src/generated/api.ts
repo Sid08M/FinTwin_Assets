@@ -14,3 +14,133 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Calculates future net worth using Future Value of Ordinary Annuity formula
+ * @summary Run financial simulation
+ */
+export const RunSimulationBody = zod.object({
+  monthlyIncome: zod.number(),
+  monthlyExpenses: zod.number(),
+  monthlySavings: zod.number(),
+  annualReturn: zod.number(),
+  currentSavings: zod.number(),
+  years: zod.number(),
+});
+
+export const RunSimulationResponse = zod.object({
+  finalNetWorth: zod.number(),
+  optimizedFinalNetWorth: zod.number(),
+  monthlyCashFlow: zod.number(),
+  savingsRate: zod.number(),
+  yearlyData: zod.array(
+    zod.object({
+      year: zod.number(),
+      netWorth: zod.number(),
+      optimizedNetWorth: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * Sends financial stats + question to Gemini for personalized advice
+ * @summary Get AI financial advice
+ */
+export const GetAiAdviceBody = zod.object({
+  financialStats: zod.record(zod.string(), zod.unknown()),
+  question: zod.string(),
+  mode: zod.enum(["professional", "roast"]),
+});
+
+export const GetAiAdviceResponse = zod.object({
+  advice: zod.string(),
+});
+
+/**
+ * @summary List all conversations
+ */
+export const ListGeminiConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListGeminiConversationsResponse = zod.array(
+  ListGeminiConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateGeminiConversationBody = zod.object({
+  title: zod.string(),
+});
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetGeminiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetGeminiConversationResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.date(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      role: zod.string(),
+      content: zod.string(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteGeminiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListGeminiMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListGeminiMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  role: zod.string(),
+  content: zod.string(),
+  createdAt: zod.date(),
+});
+export const ListGeminiMessagesResponse = zod.array(
+  ListGeminiMessagesResponseItem,
+);
+
+/**
+ * @summary Send a message and receive an AI response (SSE stream)
+ */
+export const SendGeminiMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendGeminiMessageBody = zod.object({
+  content: zod.string(),
+});
+
+/**
+ * @summary Generate an image from a text prompt
+ */
+export const GenerateGeminiImageBody = zod.object({
+  prompt: zod.string(),
+});
+
+export const GenerateGeminiImageResponse = zod.object({
+  b64_json: zod.string(),
+  mimeType: zod.string(),
+});

@@ -8,3 +8,88 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface SimulationInput {
+  monthlyIncome: number;
+  monthlyExpenses: number;
+  monthlySavings: number;
+  annualReturn: number;
+  currentSavings: number;
+  years: number;
+}
+
+export interface YearlyDataPoint {
+  year: number;
+  netWorth: number;
+  optimizedNetWorth: number;
+}
+
+export interface SimulationResult {
+  finalNetWorth: number;
+  optimizedFinalNetWorth: number;
+  monthlyCashFlow: number;
+  savingsRate: number;
+  yearlyData: YearlyDataPoint[];
+}
+
+export type AiAdviceInputFinancialStats = { [key: string]: unknown };
+
+export type AiAdviceInputMode =
+  (typeof AiAdviceInputMode)[keyof typeof AiAdviceInputMode];
+
+export const AiAdviceInputMode = {
+  professional: "professional",
+  roast: "roast",
+} as const;
+
+export interface AiAdviceInput {
+  financialStats: AiAdviceInputFinancialStats;
+  question: string;
+  mode: AiAdviceInputMode;
+}
+
+export interface AiAdviceResult {
+  advice: string;
+}
+
+export interface GeminiConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface GeminiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface CreateGeminiConversationBody {
+  title: string;
+}
+
+export interface SendGeminiMessageBody {
+  content: string;
+}
+
+export interface GeminiConversationWithMessages {
+  id: number;
+  title: string;
+  createdAt: string;
+  messages: GeminiMessage[];
+}
+
+export interface GenerateGeminiImageBody {
+  prompt: string;
+}
+
+export interface GenerateGeminiImageResponse {
+  b64_json: string;
+  mimeType: string;
+}
+
+export interface GeminiError {
+  error: string;
+}
