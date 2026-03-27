@@ -48,6 +48,15 @@ export function useFinanceData() {
   // Debounce data for the API call to prevent spamming
   const debouncedData = useDebounce(data, 500);
 
+  // Auto-save to localStorage whenever data changes (debounced)
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("fintwin_data", JSON.stringify(debouncedData));
+    } catch (e) {
+      console.error("Failed to auto-save data", e);
+    }
+  }, [debouncedData]);
+
   const saveData = useCallback(() => {
     try {
       window.localStorage.setItem("fintwin_data", JSON.stringify(data));
