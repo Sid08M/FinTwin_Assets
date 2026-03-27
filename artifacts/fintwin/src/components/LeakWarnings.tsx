@@ -1,16 +1,17 @@
 import { FinancialData } from "@/hooks/use-finance";
 import { AlertTriangle, TrendingDown } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, CurrencyCode } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 interface LeakWarningsProps {
   data: FinancialData;
+  currency: CurrencyCode;
 }
 
-export function LeakWarnings({ data }: LeakWarningsProps) {
+export function LeakWarnings({ data, currency }: LeakWarningsProps) {
   const totalExpenses = data.monthlyExpensesNeeds + data.monthlyExpensesWants;
   const expenseRatio = totalExpenses / data.monthlyIncome;
-  
+
   if (expenseRatio <= 0.8) {
     return (
       <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center text-center opacity-50 min-h-[140px]">
@@ -23,13 +24,11 @@ export function LeakWarnings({ data }: LeakWarningsProps) {
     );
   }
 
-  // Calculate the 10-year impact of plugging a 5% leak
   const leakAmount = totalExpenses * 0.05;
   const r = data.annualReturn / 100;
   const n = 12;
   const t = 10;
-  // Future Value of Annuity formula
-  const impact10Year = leakAmount * ((Math.pow(1 + r/n, n*t) - 1) / (r/n));
+  const impact10Year = leakAmount * ((Math.pow(1 + r / n, n * t) - 1) / (r / n));
 
   return (
     <motion.div
@@ -55,12 +54,13 @@ export function LeakWarnings({ data }: LeakWarningsProps) {
 
         <div className="mt-auto space-y-3">
           <p className="text-slate-300 text-sm leading-relaxed">
-            You are spending over 80% of your income. Trimming just 5% of your expenses (<strong className="text-white">{formatCurrency(leakAmount)}/mo</strong>) and investing it changes everything.
+            You are spending over 80% of your income. Trimming just 5% of your expenses (
+            <strong className="text-white">{formatCurrency(leakAmount, currency)}/mo</strong>) and investing it changes everything.
           </p>
           <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4">
             <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">10-Year Net Worth Impact</p>
             <p className="text-2xl font-display font-bold text-white">
-              +{formatCurrency(impact10Year)}
+              +{formatCurrency(impact10Year, currency)}
             </p>
           </div>
         </div>

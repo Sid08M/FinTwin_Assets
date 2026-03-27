@@ -7,9 +7,20 @@ import { BudgetGauge } from "@/components/BudgetGauge";
 import { LeakWarnings } from "@/components/LeakWarnings";
 import { AiAdvisor } from "@/components/AiAdvisor";
 import { Save, RefreshCw } from "lucide-react";
+import { CurrencyCode } from "@/lib/utils";
+
+const CURRENCIES: { code: CurrencyCode; label: string }[] = [
+  { code: "USD", label: "$ USD" },
+  { code: "EUR", label: "€ EUR" },
+  { code: "GBP", label: "£ GBP" },
+  { code: "JPY", label: "¥ JPY" },
+  { code: "CAD", label: "$ CAD" },
+  { code: "AUD", label: "$ AUD" },
+  { code: "INR", label: "₹ INR" },
+];
 
 export function Dashboard() {
-  const { data, updateField, saveData, isSaved, simulation, isLoading } = useFinanceData();
+  const { data, currency, setCurrency, updateField, saveData, isSaved, simulation, isLoading } = useFinanceData();
 
   const savingsRate = data.monthlyIncome > 0
     ? (data.monthlySavings / data.monthlyIncome) * 100
@@ -29,6 +40,26 @@ export function Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Currency Selector */}
+            <div className="relative">
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
+                className="appearance-none bg-white/10 hover:bg-white/15 border border-white/10 hover:border-white/25 text-white font-medium text-sm px-4 py-2.5 pr-8 rounded-xl cursor-pointer transition-all focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code} className="bg-slate-900 text-white">
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
             <button
               onClick={saveData}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-medium transition-all ${
@@ -58,22 +89,14 @@ export function Dashboard() {
 
           {/* Right Column: Metrics + Chart + Warnings */}
           <div className="lg:col-span-8 space-y-6">
-
-            {/* Top Row: Metrics */}
-            <DashboardMetrics simulation={simulation} isLoading={isLoading} />
-
-            {/* Twin Timelines Chart */}
-            <TwinChart simulation={simulation} />
-
-            {/* Leak Warning — full width at the bottom */}
-            <LeakWarnings data={data} />
-
+            <DashboardMetrics simulation={simulation} isLoading={isLoading} currency={currency} />
+            <TwinChart simulation={simulation} currency={currency} />
+            <LeakWarnings data={data} currency={currency} />
           </div>
         </div>
 
       </div>
 
-      {/* Floating AI Advisor — z-50 stays above everything */}
       <AiAdvisor data={data} />
     </WeatherWrapper>
   );

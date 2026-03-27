@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { runSimulation } from "@workspace/api-client-react";
+import { CurrencyCode } from "@/lib/utils";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -31,53 +32,69 @@ const DEFAULT_DATA: FinancialData = {
   years: 10,
 };
 
+function loadFromStorage() {
+  try {
+    const raw = window.localStorage.getItem("fintwin_data");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
 export function useFinanceData() {
-  // Load initial from local storage or use default
+  const stored = loadFromStorage();
+
   const [data, setData] = useState<FinancialData>(() => {
-    try {
-      const item = window.localStorage.getItem("fintwin_data");
-      if (item) return JSON.parse(item);
-    } catch (e) {
-      console.warn("Failed to load local data", e);
-    }
-    return DEFAULT_DATA;
+    const s = loadFromStorage();
+    const { currency: _omit, ...rest } = s ?? {};
+    return Object.keys(rest).length ? (rest as FinancialData) : DEFAULT_DATA;
+  });
+
+  const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
+    const s = loadFromStorage();
+    return (s?.currency as CurrencyCode) ?? "USD";
   });
 
   const [isSaved, setIsSaved] = useState(false);
 
-  // Debounce data for the API call to prevent spamming
   const debouncedData = useDebounce(data, 500);
 
-  // Auto-save to localStorage whenever data changes (debounced)
+  // Auto-save financial data + currency to localStorage on change
   useEffect(() => {
     try {
-      window.localStorage.setItem("fintwin_data", JSON.stringify(debouncedData));
+      window.localStorage.setItem(
+        "fintwin_data",
+        JSON.stringify({ ...debouncedData, currency })
+      );
     } catch (e) {
       console.error("Failed to auto-save data", e);
     }
-  }, [debouncedData]);
+  }, [debouncedData, currency]);
+
+  const setCurrency = useCallback((code: CurrencyCode) => {
+    setCurrencyState(code);
+  }, []);
 
   const saveData = useCallback(() => {
     try {
-      window.localStorage.setItem("fintwin_data", JSON.stringify(data));
+      window.localStorage.setItem(
+        "fintwin_data",
+        JSON.stringify({ ...data, currency })
+      );
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (e) {
       console.error("Failed to save data", e);
     }
-  }, [data]);
+  }, [data, currency]);
 
   const updateField = <K extends keyof FinancialData>(field: K, value: number) => {
     setData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Run simulation query
   const { data: simulation, isLoading, isError } = useQuery({
     queryKey: ["simulation", debouncedData],
     queryFn: async () => {
-      // API expects total expenses
       const totalExpenses = debouncedData.monthlyExpensesNeeds + debouncedData.monthlyExpensesWants;
-      
       const result = await runSimulation({
         monthlyIncome: debouncedData.monthlyIncome,
         monthlyExpenses: totalExpenses,
@@ -88,12 +105,13 @@ export function useFinanceData() {
       });
       return result;
     },
-    // Keep previous data while fetching to avoid jarring UI flickers
     placeholderData: (prev) => prev,
   });
 
   return {
     data,
+    currency,
+    setCurrency,
     updateField,
     saveData,
     isSaved,
