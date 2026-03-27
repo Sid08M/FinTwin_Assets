@@ -41,8 +41,6 @@ function loadFromStorage() {
 }
 
 export function useFinanceData() {
-  const stored = loadFromStorage();
-
   const [data, setData] = useState<FinancialData>(() => {
     const s = loadFromStorage();
     const { currency: _omit, ...rest } = s ?? {};

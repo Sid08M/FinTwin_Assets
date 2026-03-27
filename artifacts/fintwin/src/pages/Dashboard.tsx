@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useFinanceData } from "@/hooks/use-finance";
 import { WeatherWrapper } from "@/components/WeatherWrapper";
 import { InputForm } from "@/components/InputForm";
@@ -6,8 +7,10 @@ import { TwinChart } from "@/components/TwinChart";
 import { BudgetGauge } from "@/components/BudgetGauge";
 import { LeakWarnings } from "@/components/LeakWarnings";
 import { AiAdvisor } from "@/components/AiAdvisor";
+import { InvestmentSuggestions } from "@/components/InvestmentSuggestions";
 import { Save, RefreshCw } from "lucide-react";
 import { CurrencyCode } from "@/lib/utils";
+import { Investment, getRecommendations } from "@/lib/investments";
 
 const CURRENCIES: { code: CurrencyCode; label: string }[] = [
   { code: "USD", label: "$ USD" },
@@ -20,11 +23,16 @@ const CURRENCIES: { code: CurrencyCode; label: string }[] = [
 ];
 
 export function Dashboard() {
-  const { data, currency, setCurrency, updateField, saveData, isSaved, simulation, isLoading } = useFinanceData();
+  const { data, currency, setCurrency, updateField, saveData, isSaved, simulation, isLoading } =
+    useFinanceData();
+
+  const [simulatedInvestment, setSimulatedInvestment] = useState<Investment | null>(null);
 
   const savingsRate = data.monthlyIncome > 0
     ? (data.monthlySavings / data.monthlyIncome) * 100
     : 0;
+
+  const recommendationResult = getRecommendations(data);
 
   return (
     <WeatherWrapper savingsRate={savingsRate}>
@@ -90,10 +98,24 @@ export function Dashboard() {
           {/* Right Column: Metrics + Chart + Warnings */}
           <div className="lg:col-span-8 space-y-6">
             <DashboardMetrics simulation={simulation} isLoading={isLoading} currency={currency} />
-            <TwinChart simulation={simulation} currency={currency} />
+            <TwinChart
+              simulation={simulation}
+              currency={currency}
+              financialData={data}
+              simulatedInvestment={simulatedInvestment}
+            />
             <LeakWarnings data={data} currency={currency} />
           </div>
         </div>
+
+        {/* Investment Suggestions — full width below everything */}
+        <InvestmentSuggestions
+          data={data}
+          result={recommendationResult}
+          currency={currency}
+          activeInvestment={simulatedInvestment}
+          onSimulate={setSimulatedInvestment}
+        />
 
       </div>
 

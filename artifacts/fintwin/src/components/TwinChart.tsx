@@ -1,29 +1,46 @@
 import { SimulationResult } from "@workspace/api-client-react";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
 import { formatCurrency, CurrencyCode } from "@/lib/utils";
+import { Investment, computeOverlaySeries } from "@/lib/investments";
+import { FinancialData } from "@/hooks/use-finance";
+import { useMemo } from "react";
 
 interface TwinChartProps {
   simulation?: SimulationResult;
   currency: CurrencyCode;
+  financialData: FinancialData;
+  simulatedInvestment: Investment | null;
 }
 
 function CustomTooltip({ active, payload, label, currency }: any) {
-  if (!active || !payload || payload.length < 2) return null;
+  if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-2xl">
-      <p className="text-slate-400 font-medium mb-2">Year {label}</p>
+    <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-2xl min-w-[200px]">
+      <p className="text-slate-400 font-medium mb-2 text-sm">Year {label}</p>
       {payload.map((entry: any, index: number) => (
         <div key={index} className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-slate-300 text-sm">{entry.name}:</span>
-          <span className="text-white font-bold font-display">{formatCurrency(entry.value, currency)}</span>
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+          <span className="text-slate-300 text-xs">{entry.name}:</span>
+          <span className="text-white font-bold font-display text-sm">
+            {formatCurrency(entry.value, currency)}
+          </span>
         </div>
       ))}
-      <div className="mt-2 pt-2 border-t border-slate-800">
-        <p className="text-xs text-emerald-400 font-medium">
-          Twin Advantage: +{formatCurrency(payload[1].value - payload[0].value, currency)}
-        </p>
-      </div>
+      {payload.length >= 2 && (
+        <div className="mt-2 pt-2 border-t border-slate-800">
+          <p className="text-xs text-emerald-400 font-medium">
+            Twin Advantage: +{formatCurrency(payload[1].value - payload[0].value, currency)}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -44,7 +61,22 @@ const CURRENCY_SYMBOL: Record<CurrencyCode, string> = {
   USD: "$", EUR: "€", GBP: "£", JPY: "¥", CAD: "$", AUD: "$", INR: "₹",
 };
 
-export function TwinChart({ simulation, currency }: TwinChartProps) {
+export function TwinChart({ simulation, currency, financialData, simulatedInvestment }: TwinChartProps) {
+  const overlayData = useMemo(() => {
+    if (!simulatedInvestment) return null;
+    return computeOverlaySeries(financialData, simulatedInvestment.annualReturn);
+  }, [simulatedInvestment, financialData]);
+
+  // Merge overlay into chart data
+  const chartData = useMemo(() => {
+    if (!simulation?.yearlyData) return [];
+    if (!overlayData) return simulation.yearlyData;
+    return simulation.yearlyData.map((point, i) => ({
+      ...point,
+      overlayNetWorth: overlayData[i]?.overlayNetWorth,
+    }));
+  }, [simulation, overlayData]);
+
   if (!simulation || !simulation.yearlyData) {
     return (
       <div className="glass-panel rounded-2xl p-6 h-[400px] flex items-center justify-center">
@@ -57,12 +89,16 @@ export function TwinChart({ simulation, currency }: TwinChartProps) {
 
   return (
     <div className="glass-panel rounded-2xl p-6">
-      <div className="mb-6 flex justify-between items-end">
+      <div className="mb-6 flex flex-wrap justify-between items-end gap-3">
         <div>
           <h3 className="text-xl font-display font-bold text-white">Twin Trajectories</h3>
-          <p className="text-slate-400 text-sm">You vs. You saving 10% more efficiently.</p>
+          <p className="text-slate-400 text-sm">
+            {simulatedInvestment
+              ? `Comparing current path vs. ${simulatedInvestment.name}`
+              : "You vs. You saving 10% more efficiently."}
+          </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-slate-500" />
             <span className="text-xs text-slate-400">Current Path</span>
@@ -71,15 +107,33 @@ export function TwinChart({ simulation, currency }: TwinChartProps) {
             <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
             <span className="text-xs text-emerald-400 font-medium">Optimized Twin</span>
           </div>
+          {simulatedInvestment && (
+            <div className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full shadow-[0_0_8px]"
+                style={{
+                  backgroundColor: simulatedInvestment.color,
+                  boxShadow: `0 0 8px ${simulatedInvestment.color}`,
+                }}
+              />
+              <span className="text-xs font-medium" style={{ color: simulatedInvestment.color }}>
+                {simulatedInvestment.ticker} ({simulatedInvestment.annualReturn}%)
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="h-[350px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={simulation.yearlyData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
             <defs>
               <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
                 <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+              <filter id="glow-overlay" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
                 <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
             </defs>
@@ -120,6 +174,19 @@ export function TwinChart({ simulation, currency }: TwinChartProps) {
               dot={{ r: 4, fill: "#064e3b", stroke: "#34d399", strokeWidth: 2 }}
               activeDot={{ r: 8, fill: "#34d399", stroke: "#fff" }}
             />
+            {simulatedInvestment && (
+              <Line
+                type="monotone"
+                dataKey="overlayNetWorth"
+                name={`${simulatedInvestment.ticker} (${simulatedInvestment.annualReturn}%)`}
+                stroke={simulatedInvestment.color}
+                strokeWidth={3}
+                strokeDasharray="6 3"
+                filter="url(#glow-overlay)"
+                dot={false}
+                activeDot={{ r: 6, fill: simulatedInvestment.color, stroke: "#fff" }}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </div>
