@@ -24,6 +24,7 @@ export const RunSimulationBody = zod.object({
   monthlyExpenses: zod.number(),
   monthlySavings: zod.number(),
   annualReturn: zod.number(),
+  annualIncrement: zod.number().optional().default(0),
   currentSavings: zod.number(),
   years: zod.number(),
 });
@@ -38,6 +39,7 @@ export const RunSimulationResponse = zod.object({
       year: zod.number(),
       netWorth: zod.number(),
       optimizedNetWorth: zod.number(),
+      inflationAdjustedNetWorth: zod.number(),
     }),
   ),
 });

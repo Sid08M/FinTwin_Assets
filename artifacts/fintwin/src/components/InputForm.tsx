@@ -1,5 +1,5 @@
 import { FinancialData } from "@/hooks/use-finance";
-import { DollarSign, Percent, Calendar, Target, Activity, Wallet } from "lucide-react";
+import { DollarSign, Percent, Calendar, Target, Activity, Wallet, TrendingUp } from "lucide-react";
 import { ElementType } from "react";
 
 interface InputRowProps {
@@ -60,6 +60,7 @@ export function InputForm({ data, updateField }: InputFormProps) {
           <h3 className="text-xs uppercase tracking-wider text-emerald-500 font-bold">Income & Savings</h3>
           <InputRow label="Monthly Income" value={data.monthlyIncome} field="monthlyIncome" icon={DollarSign} prefix="$" updateField={updateField} />
           <InputRow label="Monthly Savings" value={data.monthlySavings} field="monthlySavings" icon={Wallet} prefix="$" updateField={updateField} />
+          <InputRow label="Annual Salary Increment" value={data.annualIncrement} field="annualIncrement" icon={TrendingUp} suffix="%" step={0.5} updateField={updateField} />
         </div>
 
         <div className="space-y-6 pb-6 border-b border-white/5">

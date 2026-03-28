@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { runSimulation } from "@workspace/api-client-react";
 import { CurrencyCode } from "@/lib/utils";
 
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
   useEffect(() => {
@@ -18,6 +20,7 @@ export interface FinancialData {
   monthlyExpensesWants: number;
   monthlySavings: number;
   annualReturn: number;
+  annualIncrement: number;
   currentSavings: number;
   years: number;
 }
@@ -28,6 +31,7 @@ const DEFAULT_DATA: FinancialData = {
   monthlyExpensesWants: 2000,
   monthlySavings: 1500,
   annualReturn: 7.5,
+  annualIncrement: 5,
   currentSavings: 25000,
   years: 10,
 };
@@ -40,11 +44,29 @@ function loadFromStorage() {
   return null;
 }
 
+async function apiSave(data: FinancialData, currency: CurrencyCode): Promise<void> {
+  const base = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
+  await fetch(`${base}/api/user/save`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: "default", ...data, currency }),
+  });
+}
+
+async function apiLoad(): Promise<{ found: boolean; data?: any }> {
+  const base = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
+  const res = await fetch(`${base}/api/user/load?userId=default`);
+  return res.json();
+}
+
 export function useFinanceData() {
+  const stored = loadFromStorage();
+
   const [data, setData] = useState<FinancialData>(() => {
     const s = loadFromStorage();
-    const { currency: _omit, ...rest } = s ?? {};
-    return Object.keys(rest).length ? (rest as FinancialData) : DEFAULT_DATA;
+    if (!s) return DEFAULT_DATA;
+    const { currency: _c, ...rest } = s;
+    return { ...DEFAULT_DATA, ...rest };
   });
 
   const [currency, setCurrencyState] = useState<CurrencyCode>(() => {
@@ -53,10 +75,32 @@ export function useFinanceData() {
   });
 
   const [isSaved, setIsSaved] = useState(false);
+  const [isDbLoaded, setIsDbLoaded] = useState(false);
+
+  // On mount: load from DB and override localStorage/defaults if found
+  useEffect(() => {
+    apiLoad().then((result) => {
+      if (result.found && result.data) {
+        const d = result.data;
+        setData({
+          monthlyIncome: d.monthlyIncome ?? DEFAULT_DATA.monthlyIncome,
+          monthlyExpensesNeeds: d.monthlyExpensesNeeds ?? DEFAULT_DATA.monthlyExpensesNeeds,
+          monthlyExpensesWants: d.monthlyExpensesWants ?? DEFAULT_DATA.monthlyExpensesWants,
+          monthlySavings: d.monthlySavings ?? DEFAULT_DATA.monthlySavings,
+          annualReturn: d.annualReturn ?? DEFAULT_DATA.annualReturn,
+          annualIncrement: d.annualIncrement ?? DEFAULT_DATA.annualIncrement,
+          currentSavings: d.currentSavings ?? DEFAULT_DATA.currentSavings,
+          years: d.years ?? DEFAULT_DATA.years,
+        });
+        if (d.currency) setCurrencyState(d.currency as CurrencyCode);
+      }
+      setIsDbLoaded(true);
+    }).catch(() => setIsDbLoaded(true));
+  }, []);
 
   const debouncedData = useDebounce(data, 500);
 
-  // Auto-save financial data + currency to localStorage on change
+  // Auto-save to localStorage on debounced change
   useEffect(() => {
     try {
       window.localStorage.setItem(
@@ -72,12 +116,13 @@ export function useFinanceData() {
     setCurrencyState(code);
   }, []);
 
-  const saveData = useCallback(() => {
+  const saveData = useCallback(async () => {
     try {
       window.localStorage.setItem(
         "fintwin_data",
         JSON.stringify({ ...data, currency })
       );
+      await apiSave(data, currency);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (e) {
@@ -98,11 +143,13 @@ export function useFinanceData() {
         monthlyExpenses: totalExpenses,
         monthlySavings: debouncedData.monthlySavings,
         annualReturn: debouncedData.annualReturn,
+        annualIncrement: debouncedData.annualIncrement,
         currentSavings: debouncedData.currentSavings,
         years: debouncedData.years,
       });
       return result;
     },
+    enabled: isDbLoaded,
     placeholderData: (prev) => prev,
   });
 
@@ -113,6 +160,7 @@ export function useFinanceData() {
     updateField,
     saveData,
     isSaved,
+    isDbLoaded,
     simulation,
     isLoading,
     isError,

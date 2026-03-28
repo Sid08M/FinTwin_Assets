@@ -20,15 +20,19 @@ function MetricCard({ title, value, subtext, icon: Icon, delay, highlight = fals
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5 }}
-      className={`glass-panel rounded-2xl p-6 relative overflow-hidden group ${highlight ? "ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)]" : ""}`}
+      className={`glass-panel rounded-2xl p-6 relative overflow-hidden group cursor-default
+        transition-all duration-300 hover:scale-105
+        ${highlight
+          ? "ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.1)] hover:shadow-[0_0_40px_rgba(16,185,129,0.2)]"
+          : "hover:shadow-[0_0_20px_rgba(255,255,255,0.05)]"}`}
     >
       {highlight && (
-        <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+        <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity duration-300">
           <Sparkles className="w-16 h-16 text-emerald-400" />
         </div>
       )}
       <div className="flex items-center gap-3 mb-4">
-        <div className={`p-2 rounded-xl ${highlight ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-300"}`}>
+        <div className={`p-2 rounded-xl transition-all duration-300 ${highlight ? "bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500/30" : "bg-slate-800 text-slate-300 group-hover:bg-slate-700"}`}>
           <Icon className="w-5 h-5" />
         </div>
         <h3 className="text-sm font-medium text-slate-400">{title}</h3>
@@ -38,7 +42,7 @@ function MetricCard({ title, value, subtext, icon: Icon, delay, highlight = fals
         {isLoading ? (
           <div className="h-10 w-32 bg-slate-800 rounded animate-pulse" />
         ) : (
-          <div className={`text-4xl font-display font-bold ${highlight ? "text-emerald-400" : "text-white"}`}>
+          <div className={`text-4xl font-display font-bold transition-colors duration-300 ${highlight ? "text-emerald-400" : "text-white"}`}>
             {value}
           </div>
         )}

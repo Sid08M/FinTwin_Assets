@@ -11,7 +11,7 @@ export function BudgetGauge({ data }: BudgetGaugeProps) {
   const needsRatio = data.monthlyExpensesNeeds / data.monthlyIncome;
   const wantsRatio = data.monthlyExpensesWants / data.monthlyIncome;
   const savingsRatio = data.monthlySavings / data.monthlyIncome;
-  
+
   const leftover = Math.max(0, 1 - (needsRatio + wantsRatio + savingsRatio));
 
   const chartData = [
@@ -24,15 +24,15 @@ export function BudgetGauge({ data }: BudgetGaugeProps) {
   const hasWarning = chartData.some(d => d.exceeds);
 
   return (
-    <div className="glass-panel rounded-2xl p-6 flex flex-col relative overflow-hidden">
+    <div className="glass-panel rounded-2xl p-6 flex flex-col relative overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_24px_rgba(255,255,255,0.06)] cursor-default">
       {hasWarning && (
-        <motion.div 
+        <motion.div
           animate={{ opacity: [0.1, 0.3, 0.1] }}
           transition={{ duration: 2, repeat: Infinity }}
           className="absolute inset-0 bg-destructive/10 pointer-events-none"
         />
       )}
-      
+
       <div className="mb-4">
         <h3 className="text-lg font-display font-bold text-white">50/30/20 Rule</h3>
         <p className="text-slate-400 text-sm">Budget distribution vs targets</p>
@@ -52,21 +52,21 @@ export function BudgetGauge({ data }: BudgetGaugeProps) {
               stroke="none"
             >
               {chartData.map((entry, index) => (
-                <Cell 
-                  key={`cell-${index}`} 
-                  fill={entry.color} 
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.color}
                   className={entry.exceeds ? "animate-pulse" : ""}
                 />
               ))}
             </Pie>
-            <Tooltip 
+            <Tooltip
               formatter={(value: number) => formatPercent(value)}
-              contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }}
-              itemStyle={{ color: '#fff', fontWeight: 'bold' }}
+              contentStyle={{ backgroundColor: "#0f172a", borderColor: "#1e293b", borderRadius: "8px" }}
+              itemStyle={{ color: "#fff", fontWeight: "bold" }}
             />
           </PieChart>
         </ResponsiveContainer>
-        
+
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2">
           <span className="text-2xl font-display font-bold text-white">{formatPercent(savingsRatio * 100)}</span>
           <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-bold">Saved</span>
@@ -78,9 +78,9 @@ export function BudgetGauge({ data }: BudgetGaugeProps) {
           <div key={i} className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-              <span className="text-slate-300">{item.name.split(' (')[0]}</span>
+              <span className="text-slate-300">{item.name.split(" (")[0]}</span>
             </div>
-            <span className={`font-medium ${item.exceeds ? 'text-destructive font-bold' : 'text-white'}`}>
+            <span className={`font-medium ${item.exceeds ? "text-destructive font-bold" : "text-white"}`}>
               {item.value.toFixed(1)}%
             </span>
           </div>

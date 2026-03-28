@@ -11,6 +11,7 @@ export interface SimulationInput {
   monthlyExpenses: number;
   monthlySavings: number;
   annualReturn: number;
+  annualIncrement?: number;
   currentSavings: number;
   years: number;
 }
