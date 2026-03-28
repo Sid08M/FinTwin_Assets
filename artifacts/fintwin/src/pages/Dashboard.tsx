@@ -8,6 +8,7 @@ import { BudgetGauge } from "@/components/BudgetGauge";
 import { LeakWarnings } from "@/components/LeakWarnings";
 import { AiAdvisor } from "@/components/AiAdvisor";
 import { InvestmentSuggestions } from "@/components/InvestmentSuggestions";
+import { DeltaPanel } from "@/components/DeltaPanel";
 import { Save, RefreshCw, Zap, TrendingDown, MessageSquare } from "lucide-react";
 import { CurrencyCode } from "@/lib/utils";
 import { Investment, getRecommendations } from "@/lib/investments";
@@ -24,8 +25,11 @@ const CURRENCIES: { code: CurrencyCode; label: string }[] = [
 ];
 
 export function Dashboard() {
-  const { data, currency, setCurrency, updateField, saveData, isSaved, simulation, isLoading } =
-    useFinanceData();
+  const {
+    data, currency, setCurrency, updateField, saveData, isSaved,
+    simulation, isLoading,
+    shadowSeries, netWorthDelta, baselineSavingsRate, currentSavingsRate,
+  } = useFinanceData();
 
   const [simulatedInvestment, setSimulatedInvestment] = useState<Investment | null>(null);
   const [showVolatility, setShowVolatility] = useState(false);
@@ -84,7 +88,7 @@ export function Dashboard() {
           </div>
         </header>
 
-        {/* Hero Paragraph */}
+        {/* Hero description */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -95,20 +99,19 @@ export function Dashboard() {
             <span className="text-white font-semibold">FinTwin: Your Personal Financial Reality Engine.</span>{" "}
             We bridge the gap between today's habits and tomorrow's wealth. Visualize your 10-year digital twin
             and optimize your trajectory with AI-driven insights — powered by real compounding math, inflation
-            modelling, and a live investment recommendation engine.
+            modelling, a Shadow Twin historical comparison, and a live investment recommendation engine.
           </p>
         </motion.div>
 
-        {/* Main Grid Layout */}
+        {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-          {/* Left Column: Inputs + Budget Gauge */}
+          {/* Left: Inputs + Budget Gauge */}
           <div className="lg:col-span-4 space-y-6">
             <InputForm data={data} updateField={updateField} />
             <BudgetGauge data={data} />
           </div>
 
-          {/* Right Column: Metrics + Chart Controls + Chart + Warnings */}
+          {/* Right: Metrics + Chart + Delta */}
           <div className="lg:col-span-8 space-y-6">
             <DashboardMetrics simulation={simulation} isLoading={isLoading} currency={currency} />
 
@@ -145,7 +148,17 @@ export function Dashboard() {
               simulatedInvestment={simulatedInvestment}
               showVolatility={showVolatility}
               showInflation={showInflation}
+              shadowSeries={shadowSeries}
             />
+
+            {/* Delta Panel — shown only when baseline history exists */}
+            <DeltaPanel
+              netWorthDelta={netWorthDelta}
+              baselineSavingsRate={baselineSavingsRate}
+              currentSavingsRate={currentSavingsRate}
+              currency={currency}
+            />
+
             <LeakWarnings data={data} currency={currency} />
           </div>
         </div>
@@ -159,7 +172,7 @@ export function Dashboard() {
           onSimulate={setSimulatedInvestment}
         />
 
-        {/* AI Advisor Scroll-Reveal Section */}
+        {/* AI Advisor Scroll-Reveal CTA */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -174,7 +187,7 @@ export function Dashboard() {
             <h3 className="text-xl font-display font-bold text-white mb-1">Your AI Financial Advisor is Ready</h3>
             <p className="text-slate-400 text-sm">
               Ask anything — "How do I hit $1M in 10 years?", "Roast my budget", or "What's my best next move?".
-              The advisor reads your live data and the database to craft a personalized 10-year wealth strategy.
+              The advisor reads your live data and compares it to your baseline with Smart Memory.
             </p>
           </div>
           <div className="text-xs text-slate-500 shrink-0 flex items-center gap-1">
@@ -186,7 +199,11 @@ export function Dashboard() {
         <div className="pb-24" />
       </div>
 
-      <AiAdvisor data={data} />
+      <AiAdvisor
+        data={data}
+        baselineSavingsRate={baselineSavingsRate}
+        currentSavingsRate={currentSavingsRate}
+      />
     </WeatherWrapper>
   );
 }

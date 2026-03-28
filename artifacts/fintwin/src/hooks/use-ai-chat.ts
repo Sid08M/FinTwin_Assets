@@ -9,10 +9,16 @@ export type ChatMessage = {
   isStreaming?: boolean;
 };
 
-export function useAiChat(financialData: FinancialData) {
+interface UseAiChatOptions {
+  financialData: FinancialData;
+  baselineSavingsRate?: number | null;
+  currentSavingsRate?: number | null;
+}
+
+export function useAiChat({ financialData, baselineSavingsRate, currentSavingsRate }: UseAiChatOptions) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [mode, setMode] = useState<"professional" | "roast">("professional");
-  
+
   const adviceMutation = useGetAiAdvice();
 
   const sendMessage = async (question: string) => {
@@ -28,56 +34,53 @@ export function useAiChat(financialData: FinancialData) {
     ]);
 
     try {
+      // Build the financialStats object, injecting baseline vs current for Smart Memory
+      const financialStats: Record<string, unknown> = {
+        ...financialData,
+        expenseRatio: (financialData.monthlyExpensesNeeds + financialData.monthlyExpensesWants) / financialData.monthlyIncome,
+        savingsRate: financialData.monthlySavings / financialData.monthlyIncome,
+      };
+
+      if (baselineSavingsRate !== null && baselineSavingsRate !== undefined) {
+        financialStats["User Baseline Savings Rate"] = `${baselineSavingsRate}%`;
+      }
+      if (currentSavingsRate !== null && currentSavingsRate !== undefined) {
+        financialStats["Current Savings Rate"] = `${currentSavingsRate}%`;
+      }
+
       const response = await adviceMutation.mutateAsync({
-        data: {
-          financialStats: {
-            ...financialData,
-            expenseRatio: (financialData.monthlyExpensesNeeds + financialData.monthlyExpensesWants) / financialData.monthlyIncome,
-            savingsRate: financialData.monthlySavings / financialData.monthlyIncome
-          },
-          question,
-          mode,
-        }
+        data: { financialStats, question, mode }
       });
 
-      // Simulate streaming for UX
       const fullText = response.advice;
       let currentText = "";
-      
-      // Simple typewriter effect
+
       const typeChar = (index: number) => {
         if (index < fullText.length) {
           currentText += fullText.charAt(index);
-          setMessages((prev) => 
+          setMessages((prev) =>
             prev.map(m => m.id === assistantMsgId ? { ...m, content: currentText } : m)
           );
           setTimeout(() => typeChar(index + 1), 10);
         } else {
-          setMessages((prev) => 
+          setMessages((prev) =>
             prev.map(m => m.id === assistantMsgId ? { ...m, isStreaming: false } : m)
           );
         }
       };
-      
-      typeChar(0);
 
+      typeChar(0);
     } catch (error) {
       console.error("AI Advice Error:", error);
-      setMessages((prev) => 
-        prev.map(m => m.id === assistantMsgId ? { 
-          ...m, 
+      setMessages((prev) =>
+        prev.map(m => m.id === assistantMsgId ? {
+          ...m,
           content: "I'm having trouble analyzing your data right now. Please try again.",
-          isStreaming: false 
+          isStreaming: false,
         } : m)
       );
     }
   };
 
-  return {
-    messages,
-    sendMessage,
-    mode,
-    setMode,
-    isGenerating: adviceMutation.isPending
-  };
+  return { messages, sendMessage, mode, setMode, isGenerating: adviceMutation.isPending };
 }

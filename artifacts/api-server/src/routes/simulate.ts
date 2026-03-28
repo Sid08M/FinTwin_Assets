@@ -2,12 +2,12 @@ import { Router, type IRouter } from "express";
 import { RunSimulationBody, GetAiAdviceBody } from "@workspace/api-zod";
 import { ai } from "@workspace/integrations-gemini-ai";
 import { db } from "@workspace/db";
-import { userFinancialData } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { userFinancialData, userFinancialHistory } from "@workspace/db";
+import { eq, asc, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const INFLATION_RATE = 6; // 6% annual inflation
+const INFLATION_RATE = 6;
 
 function simulateYearByYear(
   currentSavings: number,
@@ -35,7 +35,6 @@ function simulateYearByYear(
       netWorth: Math.round(netWorth),
       inflationAdjustedNetWorth: Math.round(inflationAdjustedNetWorth),
     });
-    // Grow savings by salary increment for next year
     currentMonthlySavings *= 1 + annualIncrement / 100;
   }
   return yearlyData;
@@ -61,23 +60,9 @@ router.post("/simulate", (req, res) => {
   const monthlyCashFlow = monthlyIncome - monthlyExpenses;
   const savingsRate = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
 
-  const currentData = simulateYearByYear(
-    currentSavings,
-    monthlySavings,
-    annualReturn,
-    annualIncrement,
-    years
-  );
-
-  // Optimized twin saves 10% more of income each month
+  const currentData = simulateYearByYear(currentSavings, monthlySavings, annualReturn, annualIncrement, years);
   const optimizedSavings = monthlySavings + monthlyIncome * 0.1;
-  const optimizedData = simulateYearByYear(
-    currentSavings,
-    optimizedSavings,
-    annualReturn,
-    annualIncrement,
-    years
-  );
+  const optimizedData = simulateYearByYear(currentSavings, optimizedSavings, annualReturn, annualIncrement, years);
 
   const yearlyData = currentData.map((d, i) => ({
     year: d.year,
@@ -89,13 +74,7 @@ router.post("/simulate", (req, res) => {
   const finalNetWorth = yearlyData[yearlyData.length - 1]?.netWorth ?? 0;
   const optimizedFinalNetWorth = yearlyData[yearlyData.length - 1]?.optimizedNetWorth ?? 0;
 
-  res.json({
-    finalNetWorth,
-    optimizedFinalNetWorth,
-    monthlyCashFlow,
-    savingsRate: Math.round(savingsRate * 10) / 10,
-    yearlyData,
-  });
+  res.json({ finalNetWorth, optimizedFinalNetWorth, monthlyCashFlow, savingsRate: Math.round(savingsRate * 10) / 10, yearlyData });
 });
 
 router.post("/user/save", async (req, res) => {
@@ -119,6 +98,7 @@ router.post("/user/save", async (req, res) => {
   };
 
   try {
+    // Upsert current (latest) data
     await db
       .insert(userFinancialData)
       .values({ userId, ...fields })
@@ -126,6 +106,10 @@ router.post("/user/save", async (req, res) => {
         target: userFinancialData.userId,
         set: { ...fields, updatedAt: new Date() },
       });
+
+    // Always append to history for baseline tracking
+    await db.insert(userFinancialHistory).values({ userId, ...fields });
+
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "Error saving user data");
@@ -136,16 +120,31 @@ router.post("/user/save", async (req, res) => {
 router.get("/user/load", async (req, res) => {
   const userId = (req.query.userId as string) || "default";
   try {
-    const rows = await db
+    // Current (latest) data
+    const currentRows = await db
       .select()
       .from(userFinancialData)
       .where(eq(userFinancialData.userId, userId))
       .limit(1);
-    if (rows.length === 0) {
+
+    if (currentRows.length === 0) {
       res.json({ found: false });
       return;
     }
-    res.json({ found: true, data: rows[0] });
+
+    // Baseline: very first history record
+    const baselineRows = await db
+      .select()
+      .from(userFinancialHistory)
+      .where(eq(userFinancialHistory.userId, userId))
+      .orderBy(asc(userFinancialHistory.createdAt))
+      .limit(1);
+
+    res.json({
+      found: true,
+      currentData: currentRows[0],
+      baselineData: baselineRows.length > 0 ? baselineRows[0] : null,
+    });
   } catch (err) {
     req.log.error({ err }, "Error loading user data");
     res.status(500).json({ error: "Failed to load" });
@@ -161,56 +160,83 @@ router.post("/ai/advise", async (req, res) => {
 
   const { financialStats, question, mode } = parsed.data;
 
-  // Read latest DB data if available and merge with provided stats
+  // Read latest + baseline DB data for smart memory injection
   let latestStats = { ...financialStats };
+  let baselineSavingsRate: number | null = null;
+  let currentSavingsRate: number | null = null;
+
   try {
-    const rows = await db
-      .select()
-      .from(userFinancialData)
-      .where(eq(userFinancialData.userId, "default"))
-      .limit(1);
-    if (rows.length > 0) {
-      const d = rows[0];
+    const currentRows = await db.select().from(userFinancialData).where(eq(userFinancialData.userId, "default")).limit(1);
+    const baselineRows = await db.select().from(userFinancialHistory).where(eq(userFinancialHistory.userId, "default")).orderBy(asc(userFinancialHistory.createdAt)).limit(1);
+
+    if (currentRows.length > 0) {
+      const d = currentRows[0];
+      currentSavingsRate = d.monthlyIncome > 0 ? Math.round((d.monthlySavings / d.monthlyIncome) * 1000) / 10 : 0;
       latestStats = {
         ...latestStats,
-        "Monthly Income (DB)": d.monthlyIncome,
-        "Monthly Savings (DB)": d.monthlySavings,
-        "Current Savings (DB)": d.currentSavings,
-        "Annual Return (DB)": `${d.annualReturn}%`,
-        "Annual Salary Increment (DB)": `${d.annualIncrement}%`,
+        "Current Monthly Income": d.monthlyIncome,
+        "Current Monthly Savings": d.monthlySavings,
+        "Current Net Worth": d.currentSavings,
+        "Current Annual Return": `${d.annualReturn}%`,
+        "Current Savings Rate": `${currentSavingsRate}%`,
         "Currency": d.currency,
       };
     }
+
+    if (baselineRows.length > 0) {
+      const b = baselineRows[0];
+      baselineSavingsRate = b.monthlyIncome > 0 ? Math.round((b.monthlySavings / b.monthlyIncome) * 1000) / 10 : 0;
+      latestStats = {
+        ...latestStats,
+        "Baseline Monthly Income (first visit)": b.monthlyIncome,
+        "Baseline Monthly Savings (first visit)": b.monthlySavings,
+        "Baseline Savings Rate (first visit)": `${baselineSavingsRate}%`,
+      };
+    }
   } catch (_) {
-    // non-fatal: proceed with provided stats
+    // non-fatal
   }
 
   const statsText = Object.entries(latestStats)
     .map(([k, v]) => `${k}: ${v}`)
     .join("\n");
 
+  // Smart Memory comparison block
+  let comparisonBlock = "";
+  if (baselineSavingsRate !== null && currentSavingsRate !== null) {
+    const delta = currentSavingsRate - baselineSavingsRate;
+    if (delta > 0) {
+      comparisonBlock = `\n\nSMART MEMORY: The user's savings rate has IMPROVED from ${baselineSavingsRate}% (baseline) to ${currentSavingsRate}% (now) — a +${delta.toFixed(1)}% gain. Congratulate them warmly and quantify how many months ahead they are financially.`;
+    } else if (delta < 0) {
+      const monthsDelayed = Math.abs(Math.round((delta / currentSavingsRate) * 24));
+      comparisonBlock = `\n\nSMART MEMORY: The user's savings rate has DROPPED from ${baselineSavingsRate}% (baseline) to ${currentSavingsRate}% (now) — a ${delta.toFixed(1)}% regression. Calculate that this change has delayed their financial freedom by approximately ${monthsDelayed} months. Be direct about this consequence.`;
+    } else {
+      comparisonBlock = `\n\nSMART MEMORY: The user's savings rate has remained steady at ${currentSavingsRate}% since their first visit.`;
+    }
+  }
+
   let systemPrompt: string;
   if (mode === "roast") {
     systemPrompt = `You are an aggressively sarcastic financial guru who ruthlessly roasts people's bad money habits. 
 Be hilariously harsh, call out their "money leaks", and critique their financial decisions with savage wit. 
 Use dramatic language, financial slang, and mock them for their poor choices while still providing actual advice buried in the roast.
+If Smart Memory comparison data is available, use it as roast material — celebrate improvements mockingly or savage regressions dramatically.
 Keep responses under 200 words. Be entertaining but ultimately helpful.`;
   } else {
-    systemPrompt = `You are a professional, empathetic financial advisor. 
+    systemPrompt = `You are a professional, empathetic financial advisor.
 Provide clear, actionable, personalized financial advice based on the user's current stats.
 Be encouraging, specific, and concrete. Use real numbers from their data.
+If Smart Memory comparison data is available: compare their baseline vs current savings rate. If improving, congratulate them with specifics. If declining, calculate exactly how many months or years their financial freedom has been delayed and how to course-correct.
 Build a 10-year wealth strategy roadmap based on the provided data.
 Keep responses under 200 words.`;
   }
 
-  const userMessage = `Here are my financial stats:\n${statsText}\n\nMy question: ${question}`;
+  const userMessage = `Here are my financial stats:\n${statsText}${comparisonBlock}\n\nMy question: ${question}`;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: [
-        { role: "user", parts: [{ text: systemPrompt + "\n\n" + userMessage }] }
-      ],
+      contents: [{ role: "user", parts: [{ text: systemPrompt + "\n\n" + userMessage }] }],
       config: { maxOutputTokens: 8192 },
     });
 

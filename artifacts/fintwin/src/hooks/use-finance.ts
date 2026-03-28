@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { runSimulation } from "@workspace/api-client-react";
 import { CurrencyCode } from "@/lib/utils";
@@ -18,6 +18,15 @@ export interface FinancialData {
   monthlyIncome: number;
   monthlyExpensesNeeds: number;
   monthlyExpensesWants: number;
+  monthlySavings: number;
+  annualReturn: number;
+  annualIncrement: number;
+  currentSavings: number;
+  years: number;
+}
+
+export interface BaselineSnapshot {
+  monthlyIncome: number;
   monthlySavings: number;
   annualReturn: number;
   annualIncrement: number;
@@ -53,15 +62,38 @@ async function apiSave(data: FinancialData, currency: CurrencyCode): Promise<voi
   });
 }
 
-async function apiLoad(): Promise<{ found: boolean; data?: any }> {
+async function apiLoad(): Promise<{ found: boolean; currentData?: any; baselineData?: any }> {
   const base = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
   const res = await fetch(`${base}/api/user/load?userId=default`);
   return res.json();
 }
 
-export function useFinanceData() {
-  const stored = loadFromStorage();
+// Year-by-year compound simulation (mirrors backend logic)
+export function computeYearlySeries(
+  currentSavings: number,
+  monthlySavings: number,
+  annualReturn: number,
+  annualIncrement: number,
+  years: number
+): { year: number; netWorth: number }[] {
+  const monthlyRate = annualReturn / 100 / 12;
+  let netWorth = currentSavings;
+  let ms = monthlySavings;
+  const out = [];
+  for (let y = 1; y <= years; y++) {
+    const fvPV = netWorth * Math.pow(1 + monthlyRate, 12);
+    const fvPMT =
+      monthlyRate === 0
+        ? ms * 12
+        : ms * ((Math.pow(1 + monthlyRate, 12) - 1) / monthlyRate);
+    netWorth = fvPV + fvPMT;
+    out.push({ year: y, netWorth: Math.round(netWorth) });
+    ms *= 1 + annualIncrement / 100;
+  }
+  return out;
+}
 
+export function useFinanceData() {
   const [data, setData] = useState<FinancialData>(() => {
     const s = loadFromStorage();
     if (!s) return DEFAULT_DATA;
@@ -76,12 +108,13 @@ export function useFinanceData() {
 
   const [isSaved, setIsSaved] = useState(false);
   const [isDbLoaded, setIsDbLoaded] = useState(false);
+  const [baselineData, setBaselineData] = useState<BaselineSnapshot | null>(null);
 
-  // On mount: load from DB and override localStorage/defaults if found
+  // Load from DB on mount
   useEffect(() => {
     apiLoad().then((result) => {
-      if (result.found && result.data) {
-        const d = result.data;
+      if (result.found && result.currentData) {
+        const d = result.currentData;
         setData({
           monthlyIncome: d.monthlyIncome ?? DEFAULT_DATA.monthlyIncome,
           monthlyExpensesNeeds: d.monthlyExpensesNeeds ?? DEFAULT_DATA.monthlyExpensesNeeds,
@@ -94,6 +127,17 @@ export function useFinanceData() {
         });
         if (d.currency) setCurrencyState(d.currency as CurrencyCode);
       }
+      if (result.baselineData) {
+        const b = result.baselineData;
+        setBaselineData({
+          monthlyIncome: b.monthlyIncome,
+          monthlySavings: b.monthlySavings,
+          annualReturn: b.annualReturn,
+          annualIncrement: b.annualIncrement ?? 0,
+          currentSavings: b.currentSavings,
+          years: b.years,
+        });
+      }
       setIsDbLoaded(true);
     }).catch(() => setIsDbLoaded(true));
   }, []);
@@ -103,13 +147,8 @@ export function useFinanceData() {
   // Auto-save to localStorage on debounced change
   useEffect(() => {
     try {
-      window.localStorage.setItem(
-        "fintwin_data",
-        JSON.stringify({ ...debouncedData, currency })
-      );
-    } catch (e) {
-      console.error("Failed to auto-save data", e);
-    }
+      window.localStorage.setItem("fintwin_data", JSON.stringify({ ...debouncedData, currency }));
+    } catch {}
   }, [debouncedData, currency]);
 
   const setCurrency = useCallback((code: CurrencyCode) => {
@@ -118,11 +157,21 @@ export function useFinanceData() {
 
   const saveData = useCallback(async () => {
     try {
-      window.localStorage.setItem(
-        "fintwin_data",
-        JSON.stringify({ ...data, currency })
-      );
+      window.localStorage.setItem("fintwin_data", JSON.stringify({ ...data, currency }));
       await apiSave(data, currency);
+      // After save, refresh baseline from DB
+      const result = await apiLoad();
+      if (result.baselineData) {
+        const b = result.baselineData;
+        setBaselineData({
+          monthlyIncome: b.monthlyIncome,
+          monthlySavings: b.monthlySavings,
+          annualReturn: b.annualReturn,
+          annualIncrement: b.annualIncrement ?? 0,
+          currentSavings: b.currentSavings,
+          years: b.years,
+        });
+      }
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
     } catch (e) {
@@ -134,11 +183,11 @@ export function useFinanceData() {
     setData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const { data: simulation, isLoading, isError } = useQuery({
+  const { data: simulation, isLoading } = useQuery({
     queryKey: ["simulation", debouncedData],
     queryFn: async () => {
       const totalExpenses = debouncedData.monthlyExpensesNeeds + debouncedData.monthlyExpensesWants;
-      const result = await runSimulation({
+      return runSimulation({
         monthlyIncome: debouncedData.monthlyIncome,
         monthlyExpenses: totalExpenses,
         monthlySavings: debouncedData.monthlySavings,
@@ -147,11 +196,38 @@ export function useFinanceData() {
         currentSavings: debouncedData.currentSavings,
         years: debouncedData.years,
       });
-      return result;
     },
     enabled: isDbLoaded,
     placeholderData: (prev) => prev,
   });
+
+  // Shadow Twin series computed from baseline data
+  const shadowSeries = useMemo(() => {
+    if (!baselineData || !simulation) return null;
+    return computeYearlySeries(
+      baselineData.currentSavings,
+      baselineData.monthlySavings,
+      baselineData.annualReturn,
+      baselineData.annualIncrement,
+      data.years
+    );
+  }, [baselineData, simulation, data.years]);
+
+  // Delta: difference in projected net worth between current path vs shadow twin
+  const netWorthDelta = useMemo(() => {
+    if (!simulation || !shadowSeries) return null;
+    const currentFinal = simulation.finalNetWorth;
+    const shadowFinal = shadowSeries[shadowSeries.length - 1]?.netWorth ?? 0;
+    return currentFinal - shadowFinal;
+  }, [simulation, shadowSeries]);
+
+  // Savings rate comparison
+  const baselineSavingsRate = baselineData && baselineData.monthlyIncome > 0
+    ? Math.round((baselineData.monthlySavings / baselineData.monthlyIncome) * 1000) / 10
+    : null;
+  const currentSavingsRate = data.monthlyIncome > 0
+    ? Math.round((data.monthlySavings / data.monthlyIncome) * 1000) / 10
+    : null;
 
   return {
     data,
@@ -163,6 +239,10 @@ export function useFinanceData() {
     isDbLoaded,
     simulation,
     isLoading,
-    isError,
+    baselineData,
+    shadowSeries,
+    netWorthDelta,
+    baselineSavingsRate,
+    currentSavingsRate,
   };
 }
