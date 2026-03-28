@@ -19,3 +19,6 @@
 1. **Define Your Inputs:** Enter your income, expenses, and current capital.
 2. **Run Simulation:** View your "Current Path" vs. an "Optimized Twin" path.
 3. **Consult the AI:** Use the AI Advisor to find "leaks" in your budget and get investment recommendations.
+
+
+https://fin-twin-assets--sidmandal1502.replit.app/
